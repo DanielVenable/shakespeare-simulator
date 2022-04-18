@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shakespeare Simulator</title>
+    <style>
+        #blank {
+            white-space: pre-line;
+        }
+
+        #blank span {
+            color: navy;
+        }
+
+        div {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div id="blank"></div>
+        <div>
+            <div id="say">
+                <select></select>
+                <input>
+            </div>
+            <div id="exit">
+                <button>Exit:</button> <select></select>
+            </div>
+            <div id="enter">
+                Enter: <input>
+            </div>
+        </div>
+    </div>
+</body>
+<script type="module">
+    import Words from './words.js';
+
+    const blank = document.querySelector('#blank');
+
+    const [text, characterText] = await Promise.all(['trigram.txt', 'characters.txt'].map(getFile));
+
+    const gen = new Words(
+        text.split('\n'),
+        new Map(characterText.split('\n').map(a => a.split('#'))),
+        'Act I.');
+
+    document.querySelector('#say input').addEventListener('keydown', function({ key }) {
+        if (key === 'Enter') {
+            let elem = document.createElement('span');
+            elem.textContent = '\n' + this.previousElementSibling.value;
+            blank.append(elem);
+            blank.append(' ' + this.value);
+            elem = document.createElement('span');
+            gen.talking = this.previousElementSibling.value;
+            const { prompt, characters } = gen.speaker();
+            characters.forEach(addOpts);
+            elem.textContent = prompt;
+            blank.append(elem);
+            outputter.next(this.value);
+            this.value = '';
+        }
+    });
+
+    document.querySelector('#exit button').addEventListener('click', function() {
+        const character = this.nextElementSibling.value;
+        gen.onStage.delete(character);
+        const elem = document.createElement('span');
+        elem.textContent = '\nExit ' + character;
+        blank.append(elem);
+        removeOpts(character);
+    });
+
+    document.querySelector('#enter input').addEventListener('keydown', function({ key }) {
+        if (key === 'Enter') {
+            const character = this.value.toUpperCase() + '.';
+            gen.onStage.add(character);
+            const elem = document.createElement('span');
+            elem.textContent = '\nEnter ' + character;
+            blank.append(elem);
+            addOpts(character);
+            this.value = '';
+        }
+    });
+
+    const removeOpts = character => document.querySelectorAll(`option[value="${
+        character.replace('&', '&amp;').replace('\\', '&#92;').replace('"', '&quot;')}"]`)
+        .forEach(elem => elem.remove());
+
+    function addOpts(character) {
+        for (const select of document.querySelectorAll('select')) {
+            const option = document.createElement('option');
+            option.value = character;
+            option.textContent = character.slice(0, -1);
+            select.append(option);
+        }
+    }
+
+    const outputter = (function*() {
+        for (const word of gen) {
+            if (word === '#') {
+                gen.sentence(yield);
+            } else if (word === '>') {
+                const elem = document.createElement('span');
+                const { prompt, characters } = gen.enter();
+                elem.textContent = prompt;
+                blank.append(elem);
+                characters.forEach(addOpts);
+            } else if (word === '<') {
+                if (gen.onStage.size === 0) continue;
+                const elem = document.createElement('span');
+                const { prompt, characters } = gen.exit();
+                elem.textContent = prompt;
+                blank.append(elem);
+                characters.forEach(removeOpts);
+            } else {
+                blank.append(' ' + word);
+            }
+        }
+    }());
+
+    outputter.next();
+    if (gen.onStage.size === 0) {
+        const elem = document.createElement('span');
+        const { prompt, characters } = gen.enter();
+        elem.textContent = prompt;
+        blank.append(elem);
+        characters.forEach(addOpts);
+    }
+
+    function getFile(file) {
+        return new Promise(resolve => {
+            const xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    resolve(xhr.responseText);
+                }
+            }
+            xhr.open('GET', file);
+            xhr.send();
+        });
+    }
+</script>
+</html>

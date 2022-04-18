@@ -19,7 +19,7 @@ const reg = /(?<=\n)(?!SCENE|ACT|EPILOGUE|PROLOGUE|M\.)[A-Z ]+\./g;
 
     chunks.sort((a, b) => a.localeCompare(b));
 
-    const stream = createWriteStream('trigram.txt');
+    const stream = createWriteStream('docs/trigram.txt');
 
     for (const chunk of chunks) {
         stream.write(chunk);
@@ -33,7 +33,7 @@ const reg = /(?<=\n)(?!SCENE|ACT|EPILOGUE|PROLOGUE|M\.)[A-Z ]+\./g;
         characters.set(character, (characters.get(character) ?? 0) + 1);
     }
 
-    const stream = createWriteStream('characters.txt');
+    const stream = createWriteStream('docs/characters.txt');
     
     let isFirst = true;
     for (const [character, num] of characters) {
